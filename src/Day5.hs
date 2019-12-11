@@ -4,6 +4,7 @@ module Day5 where
 
 import Data.Char
 import Text.ParserCombinators.ReadP
+import Text.Printf
 
 pa <++> pb = ((++) <$> pa <*> pb)
 
@@ -20,17 +21,17 @@ readInput = do
 interpret' :: Int -> [Int] -> IO [Int]
 interpret' ip icp = case opc'm icp ip of
   (99, _) -> return icp
-  (1, ms) -> eval (+) icp ip ms >>= interpret' (ip+4)
-  (2, ms) -> eval (*) icp ip ms >>= interpret' (ip+4)
-  (3, _)  -> save icp ip        >>= interpret' (ip+2)
-  (4, _)  -> load icp ip        >>  interpret' (ip+2) icp
-  (opc,_) -> undefined
+  (1, ms) -> printf "%d ADD (MODE=%s)\n" ip (show ms) >> eval (+) icp ip ms >>= interpret' (ip+4)
+  (2, ms) -> printf "%d MUL (MODE=%s)\n" ip (show ms) >> eval (*) icp ip ms >>= interpret' (ip+4)
+  (3, _)  -> printf "%d IN\n"  ip                     >> readIn   icp ip    >>= interpret' (ip+2)
+  (4, _)  -> printf "%d OUT="  ip                     >> printOut icp ip    >>  interpret' (ip+2) icp
+  (opc,_) -> printf "%d ERROR" >> undefined
   where
     eval op icp ip ms = do
-        print $ get icp (ip+1) (ms!!0) `op` get icp (ip+2) (ms!!1)
+--        print $ get icp (ip+1) (ms!!0) `op` get icp (ip+2) (ms!!1)
         return . update icp (ip+3) $ get icp (ip+1) (ms!!0) `op` get icp (ip+2) (ms!!1)
-    save icp ip = return $ update icp (ip+1) 1 --readLn >>= return . update icp pi
-    load icp ip = print (icp !! (ip+1))
+    readIn   icp ip = return $ update icp (ip+1) 1 --readLn >>= return . update icp pi
+    printOut icp ip = print $ deref icp (ip+1)
     update icp ip nv =
       let (h, x:t) = splitAt (icp !! ip) icp in
         h ++ (nv:t)
