@@ -14,8 +14,8 @@ code = read <$> (option "" (string "-") <++> munch isDigit)
 program :: ReadP [Int]
 program = (code `sepBy` char ',') <* optional (char '\n') <* eof
 
-readInput = do
-  (i, "") <- last . readP_to_S program <$> readFile "data/Day5-input.txt"
+readICPFrom path = do
+  (i, "") <- last . readP_to_S program <$> readFile path
   return i
 
 interpretFrom :: Int -> [Int] -> IO [Int]
@@ -53,4 +53,4 @@ opc'm pp ip = let (ms, op) = (pp !! ip) `quotRem` 100 in
 
 interpret = interpretFrom 0
 
-day5 = readInput >>= interpret >> return ()
+day5 = readICPFrom "data/Day5-input.txt" >>= interpret >> return ()
