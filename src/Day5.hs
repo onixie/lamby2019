@@ -21,21 +21,27 @@ readInput = do
 interpretFrom :: Int -> [Int] -> IO [Int]
 interpretFrom ip icp = case opc'm icp ip of
   (99, _) -> return icp
-  (1, ms) -> printf "%d ADD (MODE=%s) %d %d %d\n" ip (show ms) (icp!!(ip+1)) (icp!!(ip+2)) (icp!!(ip+3)) >> eval (+) icp ip ms >>= interpretFrom (ip+4)
-  (2, ms) -> printf "%d MUL (MODE=%s) %d %d %d\n" ip (show ms) (icp!!(ip+1)) (icp!!(ip+2)) (icp!!(ip+3)) >> eval (*) icp ip ms >>= interpretFrom (ip+4)
-  (3, _)  -> printf "%d IN %d\n"  ip (icp!!(ip+1))                                                       >> readIn   icp ip    >>= interpretFrom (ip+2)
-  (4, _)  -> printf "%d OUT %d="  ip (icp!!(ip+1))                                                       >> printOut icp ip    >>  interpretFrom (ip+2) icp
-  (opc,_) -> printf "%d ERROR" >> undefined
+  (1, ms) -> printf "%3d ADD (MODE=%s) %d %d %d\n" ip (show ms) (icp!!(ip+1)) (icp!!(ip+2)) (icp!!(ip+3)) >> eval (+) icp ip ms >>= interpretFrom (ip+4)
+  (2, ms) -> printf "%3d MUL (MODE=%s) %d %d %d\n" ip (show ms) (icp!!(ip+1)) (icp!!(ip+2)) (icp!!(ip+3)) >> eval (*) icp ip ms >>= interpretFrom (ip+4)
+  (3,  _) -> printf "%3d IN               %d=" ip           (icp!!(ip+1))                                    >> readIn   icp ip    >>= interpretFrom (ip+2)
+  (4, ms) -> printf "%3d OUT (MODE=%s) %d=" ip (show ms) (icp!!(ip+1))                                    >> printOut icp ip ms >>  interpretFrom (ip+2) icp
+  (5, ms) -> printf "%3d JNZ (MODE=%s) %d %d\n" ip (show ms) (icp!!(ip+1)) (icp!!(ip+2))                  >> interpretFrom (jmpIf (/=0) icp ip ms) icp
+  (6, ms) -> printf "%3d JEZ (MODE=%s) %d %d\n" ip (show ms) (icp!!(ip+1)) (icp!!(ip+2))                  >> interpretFrom (jmpIf (==0) icp ip ms) icp
+  (7, ms) -> printf "%3d LE  (MODE=%s) %d %d %d\n" ip (show ms) (icp!!(ip+1)) (icp!!(ip+2)) (icp!!(ip+3)) >> cmp (<)  icp ip ms >>= interpretFrom (ip+4)
+  (8, ms) -> printf "%3d EQ  (MODE=%s) %d %d %d\n" ip (show ms) (icp!!(ip+1)) (icp!!(ip+2)) (icp!!(ip+3)) >> cmp (==) icp ip ms >>= interpretFrom (ip+4)
+  (opc,_) -> printf "%3d ERROR" >> undefined
   where
-    eval op icp ip ms = return . update icp (ip+3) $ get icp (ip+1) (ms!!0) `op` get icp (ip+2) (ms!!1)
-    readIn   icp ip   = return $ update icp (ip+1) 1 --readLn >>= return . update icp pi
-    printOut icp ip   = print $ deref icp (ip+1)
+    eval op icp ip ms  = return . update icp (ip+3) $ get icp (ip+1) (ms!!0) `op` get icp (ip+2) (ms!!1)
+    readIn  icp ip     = print 7 >> return (update icp (ip+1) 7) --readLn >>= return . update icp pi
+    printOut icp ip ms = print $ get icp (ip+1) (ms!!0)
     update icp ip nv  =
       let (h, x:t) = splitAt (icp !! ip) icp in
         h ++ (nv:t)
     deref icp ip = icp !! (icp !! ip)
     get icp ip 0 = deref icp ip
     get icp ip 1 = icp !! ip
+    jmpIf f icp ip ms = if f $ get icp (ip+1) (ms!!0) then get icp (ip+2) (ms!!1) else ip+3
+    cmp f icp ip ms   = return . update icp (ip+3) $ if f (get icp (ip+1) (ms!!0)) (get icp (ip+2) (ms!!1)) then 1 else 0
 
 opc'm :: [Int] -> Int -> (Int, [Int])
 opc'm pp ip = let (ms, op) = (pp !! ip) `quotRem` 100 in
