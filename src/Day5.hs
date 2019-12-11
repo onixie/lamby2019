@@ -32,7 +32,7 @@ interpretFrom ip icp = case opc'm icp ip of
   (opc,_) -> printf "%3d ERROR" >> undefined
   where
     eval op icp ip ms  = return . update icp (ip+3) $ get icp (ip+1) (ms!!0) `op` get icp (ip+2) (ms!!1)
-    readIn  icp ip     = print 7 >> return (update icp (ip+1) 7) --readLn >>= return . update icp pi
+    readIn  icp ip     = readLn >>= return . update icp (ip+1)
     printOut icp ip ms = print $ get icp (ip+1) (ms!!0)
     update icp ip nv  =
       let (h, x:t) = splitAt (icp !! ip) icp in
@@ -53,4 +53,4 @@ opc'm pp ip = let (ms, op) = (pp !! ip) `quotRem` 100 in
 
 interpret = interpretFrom 0
 
-day5Part1 = readInput >>= interpret >> return ()
+day5 = readInput >>= interpret >> return ()
