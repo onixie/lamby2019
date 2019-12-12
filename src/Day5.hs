@@ -31,17 +31,17 @@ interpretFrom ip icp = case opc'm icp ip of
   (8, ms) -> printf "%3d EQ  (MODE=%s) %d %d %d\n" ip (show ms) (icp!!(ip+1)) (icp!!(ip+2)) (icp!!(ip+3)) >> cmp (==) icp ip ms >>= interpretFrom (ip+4)
   (opc,_) -> printf "%3d ERROR" >> undefined
   where
-    eval op icp ip ms  = return . update icp (ip+3) $ get icp (ip+1) (ms!!0) `op` get icp (ip+2) (ms!!1)
-    readIn  icp ip     = readLn >>= return . update icp (ip+1)
-    printOut icp ip ms = print $ get icp (ip+1) (ms!!0)
+    eval op icp ip ms  = return . update icp (ip+3) $ get icp (ip+1) (head ms) `op` get icp (ip+2) (ms!!1)
+    readIn  icp ip     = update icp (ip+1) <$> readLn
+    printOut icp ip ms = print $ get icp (ip+1) (head ms)
     update icp ip nv  =
       let (h, x:t) = splitAt (icp !! ip) icp in
         h ++ (nv:t)
     deref icp ip = icp !! (icp !! ip)
     get icp ip 0 = deref icp ip
     get icp ip 1 = icp !! ip
-    jmpIf f icp ip ms = if f $ get icp (ip+1) (ms!!0) then get icp (ip+2) (ms!!1) else ip+3
-    cmp f icp ip ms   = return . update icp (ip+3) $ if f (get icp (ip+1) (ms!!0)) (get icp (ip+2) (ms!!1)) then 1 else 0
+    jmpIf f icp ip ms = if f $ get icp (ip+1) (head ms) then get icp (ip+2) (ms!!1) else ip+3
+    cmp f icp ip ms   = return . update icp (ip+3) $ if f (get icp (ip+1) (head ms)) (get icp (ip+2) (ms!!1)) then 1 else 0
 
 opc'm :: [Int] -> Int -> (Int, [Int])
 opc'm pp ip = let (ms, op) = (pp !! ip) `quotRem` 100 in
