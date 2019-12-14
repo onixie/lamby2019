@@ -6,6 +6,7 @@ import Day3
 import Day4
 import Day5
 import Day6
+import Day7
 
 main :: IO ()
 main = do
@@ -26,3 +27,5 @@ main = do
   -- Day6
   day6Part1 >>= print
   day6Part2 >>= print
+  -- Day7
+  day7Part1 >>= print . maximum
