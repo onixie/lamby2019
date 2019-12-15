@@ -4,7 +4,8 @@ let
 
   inherit (nixpkgs) pkgs;
 
-  f = { mkDerivation, base, conduit, containers, stdenv, stm, text
+  f = { mkDerivation, base, conduit, containers, mtl, stdenv, stm
+      , text
       }:
       mkDerivation {
         pname = "lamby2019";
@@ -12,8 +13,10 @@ let
         src = ./.;
         isLibrary = true;
         isExecutable = true;
-        libraryHaskellDepends = [ base conduit containers stm text ];
-        executableHaskellDepends = [ base conduit containers stm text ];
+        libraryHaskellDepends = [ base conduit containers mtl stm text ];
+        executableHaskellDepends = [
+          base conduit containers mtl stm text
+        ];
         doHaddock = false;
         homepage = "https://github.com/onixie";
         license = stdenv.lib.licenses.bsd3;

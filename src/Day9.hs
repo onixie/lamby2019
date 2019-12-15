@@ -1,16 +1,11 @@
-{-# LANGUAGE LambdaCase #-}
-
-module Day7 where
+module Day9 where
 
 import Conduit
 import Control.Monad.Fail
-import Control.Concurrent.STM
-import Data.List
-import Data.IORef
-import Text.Printf
+import Control.Monad.State
 import Day5
 
-interpretFromC :: (MonadFail m, MonadIO m) => Int -> [Int] -> ConduitT Int Int m [Int]
+interpretFromC :: (MonadFail m, MonadIO m, MonadState i m, Integral i) => Int -> [i] -> ConduitT i i m [i]
 interpretFromC ip icp = case opc'm icp ip of
   (99, _) -> return icp
   (1, ms) -> {- liftIO (printf "%3d ADD (MODE=%s) %d %d %d\n" ip (show ms) (icp!!(ip+1)) (icp!!(ip+2)) (icp!!(ip+3))) >> -}
@@ -27,6 +22,7 @@ interpretFromC ip icp = case opc'm icp ip of
              cmp (<)  icp ip ms >>= interpretFromC (ip+4)
   (8, ms) -> {- liftIO (printf "%3d EQ  (MODE=%s) %d %d %d\n" ip (show ms) (icp!!(ip+1)) (icp!!(ip+2)) (icp!!(ip+3))) >> -}
              cmp (==) icp ip ms >>= interpretFromC (ip+4)
+  (9, ms) -> undefined
   (opc,_) -> {- liftIO (printf "%3d ERROR" ip) >> -} undefined
   where
     eval op icp ip ms  = return . update icp (ip+3) $ get icp (ip+1) (head ms) `op` get icp (ip+2) (ms!!1)
@@ -49,51 +45,5 @@ interpretFromC ip icp = case opc'm icp ip of
     jmpIf f icp ip ms = if f $ get icp (ip+1) (head ms) then get icp (ip+2) (ms!!1) else ip+3
     cmp f icp ip ms   = return . update icp (ip+3) $ if f (get icp (ip+1) (head ms)) (get icp (ip+2) (ms!!1)) then 1 else 0
 
-interpretC :: (MonadFail m, MonadIO m) => [Int] -> ConduitT Int Int m [Int]
+interpretC :: (MonadFail m, MonadIO m, MonadState i m, Integral i) => [i] -> ConduitT i i m [i]
 interpretC = interpretFromC 0
-
-day5C :: ConduitT Int Int IO ()
-day5C = liftIO (readICPFrom "data/Day5-input.txt") >>= interpretC >> return ()
-
-loopAwait = await >>= (\case Nothing -> return ()
-                             Just o  -> {- liftIO (print o) >> -} loopAwait)
-
-day5Part1 = runConduit $ yield 1 .| day5C .| loopAwait
-day5Part2 = runConduit $ yield 5 .| day5C .| loopAwait
-
----
-
-feedback :: MonadIO m => i -> ConduitT i i m r -> ConduitT () i m r
-feedback init conduit = do
-    out <- liftIO $ newTBQueueIO 10
-    ret <- liftIO $ newIORef undefined
-    lst <- liftIO $ newIORef undefined
-    liftIO $ atomically $ writeTBQueue out init
-    recv out .| (conduit >>= liftIO . writeIORef ret) .| send lst out
-    liftIO (readIORef lst) >>= yield
-    liftIO (readIORef ret)
-  where
-    recv out = do
-      v <- liftIO . atomically $ readTBQueue out
-      yield v
-      recv out
-    send lst out = awaitForever $ \i -> liftIO $ do
-      writeIORef lst i
-      atomically $ writeTBQueue out i
-
-day7 pss soa = sequence $ do
-  (a:b:c:d:e:_) <- permutations pss
-  return . runConduit $ soa a b c d e .| do { Just o <- await; return o }
-
-amp ps = leftover ps >> day7C
-  where
-    day7C :: ConduitT Int Int IO ()
-    day7C = liftIO (readICPFrom "data/Day7-input.txt") >>= interpretC >> return ()
-
-soa a b c d e = amp a .| amp b .| amp c .| amp d .| amp e
-
-soa1 i a b c d e = yield i .| soa a b c d e
-day7Part1 = day7 [0..4] $ soa1 0
-
-soal i a b c d e = feedback i $ soa a b c d e
-day7Part2 = day7 [5..9] $ soal 0
