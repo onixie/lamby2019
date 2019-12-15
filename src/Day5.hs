@@ -6,10 +6,10 @@ import Text.Printf
 
 pa <++> pb = (++) <$> pa <*> pb
 
-code :: ReadP Int
+code :: (Integral i, Read i) => ReadP i
 code = read <$> (option "" (string "-") <++> munch isDigit)
 
-program :: ReadP [Int]
+program :: (Integral i, Read i) => ReadP [i]
 program = (code `sepBy` char ',') <* optional (char '\n') <* eof
 
 readICPFrom path = do
@@ -41,8 +41,8 @@ interpretFrom ip icp = case opc'm icp ip of
     jmpIf f icp ip ms = if f $ get icp (ip+1) (head ms) then get icp (ip+2) (ms!!1) else ip+3
     cmp f icp ip ms   = return . update icp (ip+3) $ if f (get icp (ip+1) (head ms)) (get icp (ip+2) (ms!!1)) then 1 else 0
 
-opc'm :: Integral i => [i] -> Int -> (i, [i])
-opc'm pp ip = let (ms, op) = (pp !! ip) `quotRem` 100 in
+opc'm :: Integral i => [i] -> i -> (i, [i])
+opc'm pp ip = let (ms, op) = (pp !! (fromIntegral ip :: Int)) `quotRem` 100 in
                 (op, pad $ md ms)
   where
     md 0  = []
