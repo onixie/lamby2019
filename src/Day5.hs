@@ -47,7 +47,7 @@ opc'm pp ip = let (ms, op) = (pp !! (fromIntegral ip :: Int)) `quotRem` 100 in
   where
     md 0  = []
     md ms = let (ms', m) = ms `quotRem` 10 in m:md ms'
-    pad ms = take 2 (ms++repeat 0)
+    pad ms = take 3 (ms++repeat 0)
 
 interpret = interpretFrom 0
 

@@ -55,11 +55,11 @@ interpretC = interpretFromC 0
 day5C :: ConduitT Int Int IO ()
 day5C = liftIO (readICPFrom "data/Day5-input.txt") >>= interpretC >> return ()
 
-loopAwait = await >>= (\case Nothing -> return ()
-                             Just o  -> {- liftIO (print o) >> -} loopAwait)
+-- loopAwait = await >>= (\case Nothing -> return ()
+--                              Just o  -> {- liftIO (print o) >> -} loopAwait)
 
-day5Part1 = runConduit $ yield 1 .| day5C .| loopAwait
-day5Part2 = runConduit $ yield 5 .| day5C .| loopAwait
+day5Part1 = runConduit $ yield 1 .| day5C .| lastC
+day5Part2 = runConduit $ yield 5 .| day5C .| lastC
 
 ---
 
