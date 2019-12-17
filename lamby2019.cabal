@@ -20,7 +20,7 @@ library
   -- exposed-modules:
   -- other-modules:
   -- other-extensions:
-  build-depends:       base ^>=4.12.0.0, conduit, containers, mtl >= 2.2.2, stm >= 2.5.0.0, text >= 1.2.3.1
+  build-depends:       base ^>=4.12.0.0, colour >= 2.3.4, conduit, containers, diagrams, diagrams-lib >= 1.4.2.3, diagrams-svg >= 1.4.2, mtl >= 2.2.2, stm >= 2.5.0.0, text >= 1.2.3.1
   hs-source-dirs:      src
   default-language:    Haskell2010
 
@@ -28,6 +28,6 @@ executable lamby2019
   main-is:             Main.hs
   -- other-modules:
   -- other-extensions:
-  build-depends:       base ^>=4.12.0.0, conduit, containers, mtl >= 2.2.2, stm >= 2.5.0.0, text >= 1.2.3.1
+  build-depends:       base ^>=4.12.0.0, colour >= 2.3.4, conduit, containers, diagrams, diagrams-lib >= 1.4.2.3, diagrams-svg >= 1.4.2, mtl >= 2.2.2, stm >= 2.5.0.0, text >= 1.2.3.1
   hs-source-dirs:      src
   default-language:    Haskell2010

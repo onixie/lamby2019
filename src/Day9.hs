@@ -6,7 +6,8 @@ import Control.Monad
 import Control.Monad.Fail
 import Control.Monad.State as S (get, MonadState, put, StateT, runStateT)
 import Text.Printf
-import Day5
+import Day5 (opc'm)
+import Day7 (readICPFromC)
 import Prelude hiding (EQ)
 
 icp !!! ip = if fromIntegral (length icp) - 1 < ip then 0 else icp !! (fromIntegral ip :: Int)
@@ -17,7 +18,7 @@ data Cmp = LE | EQ deriving (Show, Eq)
 
 interpretFromC :: (MonadFail m, MonadIO m, MonadState i m, Integral i, Show i, PrintfArg i) => i -> [i] -> ConduitT i i m [i]
 interpretFromC ip icp = case opc'm icp ip of
-  (99, _) -> {- liftIO (print icp) >> -} return icp
+  (99, _) -> finish   icp ip
   (1, ms) -> eval ADD icp ip ms >>= interpretFromC (ip+4)
   (2, ms) -> eval MUL icp ip ms >>= interpretFromC (ip+4)
   (3, ms) -> readIn   icp ip ms >>= interpretFromC (ip+2)
@@ -83,12 +84,15 @@ interpretFromC ip icp = case opc'm icp ip of
                   EQ -> (==)
                   LE  -> (<)
       update icp (ip+3) (ms!!2) $ if lv `cmp` rv then 1 else 0
+    finish icp ip = do
+      liftIO (printf "%3d STP\n" ip >> printf "Intcode program:" >> print icp)
+      return icp
 
 interpretC :: (MonadFail m, MonadIO m, MonadState i m, Integral i, Show i, PrintfArg i) => [i] -> ConduitT i i m [i]
 interpretC = interpretFromC 0
 
 day9C :: ConduitT Integer Integer (StateT Integer IO) ()
-day9C = liftIO (readICPFrom "data/Day9-input.txt") >>= interpretC >> return ()
+day9C = readICPFromC "data/Day9-input.txt" >>= interpretC >> return ()
 
 test1 :: ConduitT Integer Integer (StateT Integer IO) ()
 test1 = void $ interpretC [109,1,204,-1,1001,100,1,100,1008,100,16,101,1006,101,0,99]

@@ -10,6 +10,9 @@ import Data.IORef
 import Text.Printf
 import Day5
 
+readICPFromC :: (MonadIO m, Integral r, Read r) => FilePath -> ConduitT i o m [r]
+readICPFromC = liftIO . readICPFrom
+
 interpretFromC :: (MonadFail m, MonadIO m) => Int -> [Int] -> ConduitT Int Int m [Int]
 interpretFromC ip icp = case opc'm icp ip of
   (99, _) -> return icp
@@ -53,7 +56,7 @@ interpretC :: (MonadFail m, MonadIO m) => [Int] -> ConduitT Int Int m [Int]
 interpretC = interpretFromC 0
 
 day5C :: ConduitT Int Int IO ()
-day5C = liftIO (readICPFrom "data/Day5-input.txt") >>= interpretC >> return ()
+day5C = readICPFromC "data/Day5-input.txt" >>= interpretC >> return ()
 
 -- loopAwait = await >>= (\case Nothing -> return ()
 --                              Just o  -> {- liftIO (print o) >> -} loopAwait)
@@ -63,7 +66,7 @@ day5Part2 = runConduit $ yield 5 .| day5C .| lastC
 
 ---
 
-feedback :: MonadIO m => i -> ConduitT i i m r -> ConduitT () i m r
+feedback :: (PrintfArg i, Show i, MonadIO m) => i -> ConduitT i i m r -> ConduitT () i m r
 feedback init conduit = do
     out <- liftIO $ newTBQueueIO 10
     ret <- liftIO $ newIORef undefined
@@ -75,10 +78,12 @@ feedback init conduit = do
   where
     recv out = do
       v <- liftIO . atomically $ readTBQueue out
+--      liftIO $ printf "receive %v" v
       yield v
       recv out
     send lst out = awaitForever $ \i -> liftIO $ do
       writeIORef lst i
+--      liftIO $ printf "send back %v" i
       atomically $ writeTBQueue out i
 
 day7 pss soa = sequence $ do
@@ -88,7 +93,7 @@ day7 pss soa = sequence $ do
 amp ps = leftover ps >> day7C
   where
     day7C :: ConduitT Int Int IO ()
-    day7C = liftIO (readICPFrom "data/Day7-input.txt") >>= interpretC >> return ()
+    day7C = readICPFromC "data/Day7-input.txt" >>= interpretC >> return ()
 
 soa a b c d e = amp a .| amp b .| amp c .| amp d .| amp e
 
