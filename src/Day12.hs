@@ -18,7 +18,7 @@ z = string " z=" >> number <* string ">"
 moon = (,,) <$> x <*> y <*> z
 moons = moon `sepBy` char '\n'
 
-readPos = fst . last . readP_to_S moons <$> readFile "./data/Day12-input.txt"
+readPos = fst . last . readP_to_S moons <$> readFile "./data/Day12-sample.txt"
 
 gravity m [] = []
 gravity m1@(x1,y1,z1) ((x2,y2,z2):ms) =
@@ -74,3 +74,33 @@ totalE sys =
     energy (x, y, z) = abs x + abs y + abs z
 
 day12Part1 = totalE <$> simulate 1000
+
+simulate2 = do
+    i <- init
+    step 0 (fmap pos i) i
+  where
+    init = do
+      pos1:pos2:pos3:pos4:_ <- readPos
+      let io       = Moon "IO"       pos1 (0,0,0)
+          europa   = Moon "Europa"   pos2 (0,0,0)
+          ganymede = Moon "Ganymede" pos3 (0,0,0)
+          callisto = Moon "Callisto" pos4 (0,0,0)
+      return [io, europa, ganymede, callisto]
+
+    step n inits s@(io:eu:ga:ca:_) = do
+      --print n
+      let ioVel = velocity . (vel io:) . gravity (pos io) $ fmap pos [eu, ga, ca]
+      let euVel = velocity . (vel eu:) . gravity (pos eu) $ fmap pos [io, ga, ca]
+      let gaVel = velocity . (vel ga:) . gravity (pos ga) $ fmap pos [io, eu, ca]
+      let caVel = velocity . (vel ca:) . gravity (pos ca) $ fmap pos [io, eu, ga]
+      let ioNewPos = move [pos io, ioVel]
+      let euNewPos = move [pos eu, euVel]
+      let gaNewPos = move [pos ga, gaVel]
+      let caNewPos = move [pos ca, caVel]
+      if inits == [ioNewPos, euNewPos, gaNewPos, caNewPos]
+      then return s
+      else step (n+1) inits
+           [io{pos=ioNewPos, vel=ioVel}
+           ,eu{pos=euNewPos, vel=euVel}
+           ,ga{pos=gaNewPos, vel=gaVel}
+           ,ca{pos=caNewPos, vel=caVel}]
