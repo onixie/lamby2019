@@ -30,31 +30,32 @@ interpretFromC ip icp = case opc'm icp ip of
   (5, ms) -> jmpIf NZ icp ip ms >>= flip interpretFromC icp
   (6, ms) -> jmpIf EZ icp ip ms >>= flip interpretFromC icp
   (7, ms) -> cmp LE   icp ip ms >>= interpretFromC (ip+4)
-  (8, ms) -> cmp EQ  icp ip ms >>= interpretFromC (ip+4)
+  (8, ms) -> cmp EQ   icp ip ms >>= interpretFromC (ip+4)
   (9, ms) -> do
      rb <- lift S.get
      mv <- get icp (ip+1) (head ms)
      lift $ put (rb + mv)
-     liftIO (printf "%3d REL (MODE=%s) %d # old base:%d, new base:%d\n" ip (show ms) (icp!!!(ip+1)) rb (rb+mv))
+--     liftIO (printf "%3d REL (MODE=%s) %d # old base:%d, new base:%d\n" ip (show ms) (icp!!!(ip+1)) rb (rb+mv))
      interpretFromC (ip+2) icp
   (opc,_) -> liftIO (printf "%3d ERROR" ip) >> undefined
   where
     eval op icp ip ms  = do
       lv <- get icp (ip+1) (head ms)
       rv <- get icp (ip+2) (ms!!1)
-      liftIO (printf "%3d %s (MODE=%s) %d %d %d # arg1=%d arg2=%d\n" ip (show op) (show ms) (icp!!!(ip+1)) (icp!!!(ip+2)) (icp!!!(ip+3)) lv rv)
+--      liftIO (printf "%3d %s (MODE=%s) %d %d %d # arg1=%d arg2=%d\n" ip (show op) (show ms) (icp!!!(ip+1)) (icp!!!(ip+2)) (icp!!!(ip+3)) lv rv)
       update icp (ip+3) (ms!!2) $ case op of
         ADD -> lv + rv
         MUL -> lv * rv
     readIn  icp ip ms  = do
       maybeI <- await
       case maybeI of
-        Just i  -> do liftIO $ printf "%3d IN  (MODE=%s) %d # in=%d\n" ip (show ms) (icp!!!(ip+1)) i
-                      update icp (ip+1) (head ms) (fromIntegral i)
+        Just i  -> do
+          liftIO $ printf "%3d IN  (MODE=%s) %d # in=%d\n" ip (show ms) (icp!!!(ip+1)) i
+          update icp (ip+1) (head ms) (fromIntegral i)
         Nothing -> return icp
     printOut icp ip ms = do
       o <- get icp (ip+1) (head ms)
-      liftIO $ printf "%3d OUT (MODE=%s) %d # out=%d\n"      ip (show ms) (icp!!!(ip+1)) o
+--      liftIO $ printf "%3d OUT (MODE=%s) %d # out=%d\n"      ip (show ms) (icp!!!(ip+1)) o
       yield $ fromIntegral o
     update icp ip m nv = do
       rb <- S.get
@@ -75,7 +76,7 @@ interpretFromC ip icp = case opc'm icp ip of
       return $ icp!!!(rb+(icp!!!ip))
     jmpIf pred icp ip ms = do
       v <- get icp (ip+1) (head ms)
-      liftIO (printf "%3d J%s (MODE=%s) %d %d # arg=%d\n" ip (show pred) (show ms) (icp!!!(ip+1)) (icp!!!(ip+2)) v)
+--      liftIO (printf "%3d J%s (MODE=%s) %d %d # arg=%d\n" ip (show pred) (show ms) (icp!!!(ip+1)) (icp!!!(ip+2)) v)
       let f = case pred of
                 EZ -> (==0)
                 NZ -> (/=0)
@@ -83,7 +84,7 @@ interpretFromC ip icp = case opc'm icp ip of
     cmp pred icp ip ms   = do
       lv <- get icp (ip+1) (head ms)
       rv <- get icp (ip+2) (ms!!1)
-      liftIO (printf "%3d %s  (MODE=%s) %d %d %d # arg1=%d arg2=%d\n" ip (show pred) (show ms) (icp!!!(ip+1)) (icp!!!(ip+2)) (icp!!!(ip+3)) lv rv)
+--      liftIO (printf "%3d %s  (MODE=%s) %d %d %d # arg1=%d arg2=%d\n" ip (show pred) (show ms) (icp!!!(ip+1)) (icp!!!(ip+2)) (icp!!!(ip+3)) lv rv)
       let cmp = case pred of
                   EQ -> (==)
                   LE  -> (<)

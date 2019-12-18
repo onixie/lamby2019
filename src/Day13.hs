@@ -3,6 +3,7 @@ module Day13 where
 import Conduit
 import Control.Monad
 import Control.Monad.State
+import Control.Concurrent (threadDelay)
 import Data.Map (Map, empty, fromList, insert, lookup, size, toList)
 import Data.Maybe
 import Day7 (feedback, readICPFromC)
@@ -12,8 +13,10 @@ import Prelude hiding (lookup, Empty)
 import Diagrams.Prelude as DP hiding (size, Empty)
 import Diagrams.Backend.SVG
 
+import System.IO
+
 data Tile = Empty | Wall | Block | Paddle | Ball deriving (Show, Eq)
-type Position = (Double, Double)
+type Position = (Integer, Integer)
 type Game = Map Position Tile
 type Score = Integer
 
@@ -21,42 +24,64 @@ day13C :: Bool -> ConduitT Integer Void (StateT Integer IO) (Game, Score)
 day13C free = do
     icp <- readICPFromC "data/Day13-input.txt"
     let icp' = if free then 2:drop 1 icp else icp
-    void (interpretC icp') .| play empty 0
+    void (interpretC icp') .| play empty Nothing 0
   where
-    play :: Game -> Score -> ConduitT Integer Void (StateT Integer IO) (Game, Score)
-    play game score = do
-      maybeX   <- await
-      maybeY   <- await
-      maybeTID <- await
+    play :: Game -> Maybe Position -> Score -> ConduitT Integer Void (StateT Integer IO) (Game, Score)
+    play game bpos score = do
+      maybeX <- await
+      maybeY <- await
+      maybeZ <- await
 
-      liftIO $ visualize game
-      if isNothing maybeX || isNothing maybeY || isNothing maybeTID
+      if isNothing maybeX || isNothing maybeY || isNothing maybeZ
       then return (game, score)
       else do
-        let (Just x)   = maybeX
-        let (Just y)   = maybeY
-        let (Just tid) = maybeTID
 
-        if x == -1 && y == 0
-        then play game tid -- tid is the new score
-        else play (update game x y tid) score
-    update game x y tid =
-      (flip.) insert (fromIntegral x, fromIntegral y) game $
-        case tid of
-          0 -> Empty
-          1 -> Wall
-          2 -> Block
-          3 -> Paddle
-          4 -> Ball
+        let (Just x) = maybeX
+        let (Just y) = maybeY
+        let (Just z) = maybeZ -- tile id or score
 
-visualize m = renderSVG "./out/Day13-result.svg" (dims2D 500 500) (rotate halfTurn scene :: Diagram B)
+        if x == -1 && y == 0  -- update score
+        then do
+          liftIO $ print score
+          play game bpos z
+        else do
+          let obj = toObj z
+
+          if isNothing bpos || obj /= Ball
+          then return ()
+          else liftIO . visualize game $ let Just bxy = bpos in
+                                           if bxy == (x, y)
+                                           then mempty
+                                           else arrowBetween (p2 $ toD bxy) (p2 $ toD (x,  y))
+
+          if obj /= Ball && Just (x, y) == bpos -- Skip
+          then play game bpos score
+          else if obj == Ball && bpos /= Nothing -- update ball, clear prev
+          then do
+            let Just bxy = bpos
+            play (insert (x, y) obj (insert bxy Empty game)) (Just (x, y)) score
+          else if obj == Ball && bpos == Nothing -- update ball only
+          then play (insert (x, y) obj game) (Just (x, y)) score
+          else play (insert (x, y) obj game) bpos score
+
+toObj tid = case tid of
+  0 -> Empty
+  1 -> Wall
+  2 -> Block
+  3 -> Paddle
+  4 -> Ball
+
+visualize m btrace = renderSVG "./out/Day13-result.svg" (dims2D 500 500) (rotate halfTurn scene :: Diagram B)
   where
     bound m = (minimum m, maximum m)
-    listOf obj = map (p2 . fst) . filter (( obj==).snd) $ toList m
-    scene   = listOf Block  `atPoints` repeat (square 0.5 # fc pink # scaleX 1.5)
-           <> listOf Wall   `atPoints` repeat (square 1   # fc orange)
+    listOf obj = map (p2 . toD . fst) . filter (( obj==).snd) $ toList m
+    scene   = listOf Wall   `atPoints` repeat (square 1   # fc orange)
+           <> listOf Block  `atPoints` repeat (square 0.5 # fc pink # scaleX 1.5)
+           <> listOf Paddle `atPoints` repeat (square 1 # fc white # scaleX 1.5)
            <> listOf Ball   `atPoints` repeat (circle 0.2 # fc blue)
-           <> listOf Paddle `atPoints` repeat (square 0.5 # fc white # scaleX 1.5)
+           <> btrace -- # (with & headStyle %~ fc orange . opacity 0.75)
+
+toD (x, y) = (fromIntegral x, fromIntegral y)
 
 day13CPart1 = do
   ((game,_),_) <- run $ yield 0 .| day13C False
@@ -69,10 +94,11 @@ day13CPart2 = do
   return score
   where
     joystick = do
-      c <- liftIO $ getChar
-      yield (case c of
-        'j' -> negate 1
-        'k' -> 0
-        'l' -> 1
-        _   -> 0)
+      liftIO $ hSetBuffering stdin NoBuffering
+      c <- liftIO getChar
+      case c of
+        'j' -> yield 1
+        'k' -> yield 0
+        'l' -> yield $ negate 1
+        _   -> return ()
       joystick
