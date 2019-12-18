@@ -6,7 +6,7 @@ import Control.Monad.State
 import Data.Map (Map, empty, fromList, insert, lookup, size, toList)
 import Data.Maybe
 import Day7 (feedback, readICPFromC)
-import Day9 (interpretC)
+import Day9 (interpretC, run)
 import Prelude hiding (lookup)
 
 import Diagrams.Prelude hiding (size)
@@ -42,11 +42,11 @@ day11C sp = do
         yield $ Data.Maybe.fromMaybe 0 (lookup newPos map)
         respond newDir newPos $ insert pos c map
 
-day11Part1 = (runStateT . runConduit $ day11C 0 .| await) 0 >>= return . fst
+day11Part1 = fst <$> run (day11C 0 .| await)
 
 visualize m = let points = map (p2 . fst) . filter ((1==).snd) $ toList m in
     renderSVG "./out/Day11-result.svg" (dims2D 500 500) (points `atPoints` repeat (circle 0.2 # fc white) :: Diagram B)
   where
     bound m = (minimum m, maximum m)
 
-day11Part2 = (runStateT . runConduit $ day11C 1 .| await) 0 >>= return . fst
+day11Part2 = fst <$> run (day11C 1 .| await)

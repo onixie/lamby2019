@@ -16,7 +16,11 @@ data Op = ADD | MUL deriving (Show, Eq)
 data Pred = EZ | NZ deriving (Show, Eq)
 data Cmp = LE | EQ deriving (Show, Eq)
 
-interpretFromC :: (MonadFail m, MonadIO m, MonadState i m, Integral i, Show i, PrintfArg i) => i -> [i] -> ConduitT i i m [i]
+class (Integral i, PrintfArg i, Show i) => IntCode i
+instance IntCode Int
+instance IntCode Integer
+
+interpretFromC :: (MonadFail m, MonadIO m, MonadState ic m, IntCode ic, IntCode idx, IntCode i, IntCode o) => idx -> [ic] -> ConduitT i o m [ic]
 interpretFromC ip icp = case opc'm icp ip of
   (99, _) -> finish   icp ip
   (1, ms) -> eval ADD icp ip ms >>= interpretFromC (ip+4)
@@ -42,16 +46,16 @@ interpretFromC ip icp = case opc'm icp ip of
       update icp (ip+3) (ms!!2) $ case op of
         ADD -> lv + rv
         MUL -> lv * rv
-    readIn  icp ip ms   = do
+    readIn  icp ip ms  = do
       maybeI <- await
       case maybeI of
         Just i  -> do liftIO $ printf "%3d IN  (MODE=%s) %d # in=%d\n" ip (show ms) (icp!!!(ip+1)) i
-                      update icp (ip+1) (head ms) i
+                      update icp (ip+1) (head ms) (fromIntegral i)
         Nothing -> return icp
     printOut icp ip ms = do
       o <- get icp (ip+1) (head ms)
       liftIO $ printf "%3d OUT (MODE=%s) %d # out=%d\n"      ip (show ms) (icp!!!(ip+1)) o
-      yield o
+      yield $ fromIntegral o
     update icp ip m nv = do
       rb <- S.get
       let pos = (if m == 2 then rb else 0)+(icp!!!ip)
@@ -75,7 +79,7 @@ interpretFromC ip icp = case opc'm icp ip of
       let f = case pred of
                 EZ -> (==0)
                 NZ -> (/=0)
-      if f v then get icp (ip+2) (ms!!1) else return $ ip+3
+      if f v then fromIntegral <$> get icp (ip+2) (ms!!1) else return $ ip+3
     cmp pred icp ip ms   = do
       lv <- get icp (ip+1) (head ms)
       rv <- get icp (ip+2) (ms!!1)
@@ -88,8 +92,8 @@ interpretFromC ip icp = case opc'm icp ip of
       liftIO (printf "%3d STP\n" ip >> printf "Intcode program:" >> print icp)
       return icp
 
-interpretC :: (MonadFail m, MonadIO m, MonadState i m, Integral i, Show i, PrintfArg i) => [i] -> ConduitT i i m [i]
-interpretC = interpretFromC 0
+interpretC :: (MonadFail m, MonadIO m, MonadState ic m, IntCode i, IntCode o, IntCode ic) => [ic] -> ConduitT i o m [ic]
+interpretC = interpretFromC (0 :: Integer)
 
 day9C :: ConduitT Integer Integer (StateT Integer IO) ()
 day9C = readICPFromC "data/Day9-input.txt" >>= interpretC >> return ()
@@ -103,6 +107,8 @@ test2 = void $ interpretC [1102,34915192,34915192,7,4,7,99,0]
 test3 :: ConduitT Integer Integer (StateT Integer IO) ()
 test3 = void $ interpretC [104,1125899906842624,99]
 
-day9Part1 = (runStateT . runConduit $ yield 1 .| day9C .| sinkList) 0
+run = flip runStateT 0 . runConduit
 
-day9Part2 = (runStateT . runConduit $ yield 2 .| day9C .| sinkList) 0
+day9Part1 = run $ yield 1 .| day9C .| sinkList
+
+day9Part2 = run $ yield 2 .| day9C .| sinkList
