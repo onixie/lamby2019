@@ -6,6 +6,8 @@ import Control.Monad.State
 import Control.Concurrent (threadDelay)
 import Data.Map (Map, empty, fromList, insert, lookup, size, toList)
 import Data.Maybe
+import Data.IORef
+import Data.Ratio
 import Day7 (feedback, readICPFromC)
 import Day9 (interpretC, run)
 import Prelude hiding (lookup, Empty)
@@ -19,9 +21,10 @@ data Tile = Empty | Wall | Block | Paddle | Ball deriving (Show, Eq)
 type Position = (Integer, Integer)
 type Game = Map Position Tile
 type Score = Integer
+type Toranomaki = IORef (Maybe Integer)
 
-day13C :: Bool -> ConduitT Integer Void (StateT Integer IO) (Game, Score)
-day13C free = do
+day13C :: Bool -> Toranomaki -> ConduitT Integer Void (StateT Integer IO) (Game, Score)
+day13C free tora = do
     icp <- readICPFromC "data/Day13-input.txt"
     let icp' = if free then 2:drop 1 icp else icp
     void (interpretC icp') .| play empty Nothing 0
@@ -58,10 +61,16 @@ day13C free = do
           then play game bpos score
           else if obj == Ball && bpos /= Nothing -- update ball, clear prev
           then do
-            let Just bxy = bpos
+            let Just bxy@(bx,by) = bpos
+            liftIO . writeIORef tora . Just $ case x `compare` bx of
+              LT -> -1
+              GT -> 1
+              EQ -> 0
             play (insert (x, y) obj (insert bxy Empty game)) (Just (x, y)) score
           else if obj == Ball && bpos == Nothing -- update ball only
-          then play (insert (x, y) obj game) (Just (x, y)) score
+          then do
+            liftIO $ writeIORef tora Nothing
+            play (insert (x, y) obj game) (Just (x, y)) score
           else play (insert (x, y) obj game) bpos score
 
 toObj tid = case tid of
@@ -84,21 +93,31 @@ visualize m btrace = renderSVG "./out/Day13-result.svg" (dims2D 500 500) (rotate
 toD (x, y) = (fromIntegral x, fromIntegral y)
 
 day13CPart1 = do
-  ((game,_),_) <- run $ yield 0 .| day13C False
+  cheatsheet <- newIORef Nothing
+  ((game,_),_) <- run $ yield 0 .| day13C False cheatsheet
   -- visualize g
   return . length . filter ((Block==).snd) $ toList game
 
 day13CPart2 = do
-  ((game,score),_) <- run $ joystick .| day13C True
+  cheatsheet <- newIORef Nothing
+  ((game,score),_) <- run $ joystick cheatsheet .| day13C True cheatsheet
 --  visualize game
   return score
   where
-    joystick = do
+    joystick cheatsheet = do
       liftIO $ hSetBuffering stdin NoBuffering
       c <- liftIO getChar
       case c of
         'j' -> yield 1
         'k' -> yield 0
         'l' -> yield $ negate 1
+        ' ' -> autoYield cheatsheet
         _   -> return ()
-      joystick
+      joystick cheatsheet
+    autoYield cheatsheet = do
+      maybeCS <- liftIO $ readIORef cheatsheet
+      if isNothing maybeCS
+      then return ()
+      else do
+           let (Just cs) = maybeCS
+           yield cs
