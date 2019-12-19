@@ -5,7 +5,7 @@ let
   inherit (nixpkgs) pkgs;
 
   f = { mkDerivation, base, colour, conduit, containers, diagrams
-      , diagrams-lib, diagrams-svg, mtl, stdenv, stm, text
+      , diagrams-lib, diagrams-svg, diagrams-rasterific, mtl, stdenv, stm, text
       }:
       mkDerivation {
         pname = "lamby2019";
@@ -14,11 +14,11 @@ let
         isLibrary = true;
         isExecutable = true;
         libraryHaskellDepends = [
-          base colour conduit containers diagrams diagrams-lib diagrams-svg
+          base colour conduit containers diagrams diagrams-lib diagrams-svg diagrams-rasterific
           mtl stm text
         ];
         executableHaskellDepends = [
-          base colour conduit containers diagrams diagrams-lib diagrams-svg
+          base colour conduit containers diagrams diagrams-lib diagrams-svg diagrams-rasterific
           mtl stm text
         ];
         doHaddock = false;

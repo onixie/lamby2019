@@ -14,6 +14,7 @@ import Prelude hiding (lookup, Empty)
 
 import Diagrams.Prelude as DP hiding (size, Empty)
 import Diagrams.Backend.SVG
+--import Diagrams.Backend.Rasterific
 
 import System.IO
 
