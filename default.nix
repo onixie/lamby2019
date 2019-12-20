@@ -5,7 +5,8 @@ let
   inherit (nixpkgs) pkgs;
 
   f = { mkDerivation, base, colour, conduit, containers, diagrams
-      , diagrams-lib, diagrams-svg, diagrams-rasterific, mtl, stdenv, stm, text
+      , diagrams-lib, diagrams-rasterific, diagrams-svg, lens, mtl
+      , stdenv, stm, text
       }:
       mkDerivation {
         pname = "lamby2019";
@@ -14,12 +15,12 @@ let
         isLibrary = true;
         isExecutable = true;
         libraryHaskellDepends = [
-          base colour conduit containers diagrams diagrams-lib diagrams-svg diagrams-rasterific
-          mtl stm text
+          base colour conduit containers diagrams diagrams-lib
+          diagrams-rasterific diagrams-svg lens mtl stm text
         ];
         executableHaskellDepends = [
-          base colour conduit containers diagrams diagrams-lib diagrams-svg diagrams-rasterific
-          mtl stm text
+          base colour conduit containers diagrams diagrams-lib
+          diagrams-rasterific diagrams-svg lens mtl stm text
         ];
         doHaddock = false;
         homepage = "https://github.com/onixie";
