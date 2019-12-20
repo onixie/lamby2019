@@ -7,7 +7,7 @@ import Control.Monad.Fail
 import Control.Monad.State as S (get, MonadState, put, StateT, runStateT)
 import Text.Printf
 import Day5 (opc'm)
-import Day7 (readICPFromC)
+import Day7 (readICPFromC, feedback, day7)
 import Prelude hiding (EQ)
 
 icp !!! ip = if fromIntegral (length icp) - 1 < ip then 0 else icp !! (fromIntegral ip :: Int)
@@ -50,7 +50,7 @@ interpretFromC ip icp = case opc'm icp ip of
       maybeI <- await
       case maybeI of
         Just i  -> do
-          liftIO $ printf "%3d IN  (MODE=%s) %d # in=%d\n" ip (show ms) (icp!!!(ip+1)) i
+--          liftIO $ printf "%3d IN  (MODE=%s) %d # in=%d\n" ip (show ms) (icp!!!(ip+1)) i
           update icp (ip+1) (head ms) (fromIntegral i)
         Nothing -> return icp
     printOut icp ip ms = do
@@ -90,7 +90,7 @@ interpretFromC ip icp = case opc'm icp ip of
                   LE  -> (<)
       update icp (ip+3) (ms!!2) $ if lv `cmp` rv then 1 else 0
     finish icp ip = do
-      liftIO (printf "%3d STP\n" ip >> printf "Intcode program:" >> print icp)
+--      liftIO (printf "%3d STP\n" ip >> printf "Intcode program:" >> print icp)
       return icp
 
 interpretC :: (MonadFail m, MonadIO m, MonadState ic m, IntCode i, IntCode o, IntCode ic) => [ic] -> ConduitT i o m [ic]
@@ -113,3 +113,18 @@ run = flip runStateT 0 . runConduit
 day9Part1 = run $ yield 1 .| day9C .| sinkList
 
 day9Part2 = run $ yield 2 .| day9C .| sinkList
+
+--- Day7 revised
+
+day7C' :: ConduitT Integer Integer (StateT Integer IO) ()
+day7C' = readICPFromC "data/Day7-input.txt" >>= interpretC >> return ()
+
+amp' ps = leftover ps >> day7C'
+
+soa' a b c d e = amp' a .| amp' b .| amp' c .| amp' d .| amp' e
+
+soa1' i a b c d e = yield i .| soa' a b c d e
+day7Part1' = flip runStateT 0 . day7 [0..4] $ soa1' 0
+
+soal' i a b c d e = feedback i $ soa' a b c d e
+day7Part2' = flip runStateT 0 . day7 [5..9] $ soal' 0
