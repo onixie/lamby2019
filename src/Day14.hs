@@ -36,7 +36,7 @@ cause reactions required =
     consume quot reaction =
       if quot == 0
       then []
-      else reaction ^. inputs & mapped . amount %~ (*quot)
+      else reaction ^. inputs <&> amount %~ (*quot)
     left rem required =
       if rem == 0
       then []
@@ -49,7 +49,7 @@ mix = map (foldl1 (\r1 r2 -> r1 & amount %~ (+ r2 ^. amount)))
 requiredBy c reactions =
   case find (\r -> r ^. produce . name == c ^. name) reactions of
     Nothing -> []
-    Just r  -> uniq $ r ^.. inputs . each . name ++ (concat $ map (flip requiredBy reactions) (r ^. inputs))
+    Just r  -> uniq $ r ^.. inputs . each . name ++ concatMap (flip requiredBy reactions) (r ^. inputs)
   where
     uniq = map head . group . sort
 
@@ -57,7 +57,7 @@ distill required reactions = mix $ chain (a ^.. each . produce) reactions ++ b
   where
     distilled = distilling required []
     distilling (c:cs) cs' =
-      if (c ^. name) `notElem` (concat $ map (flip requiredBy reactions) (cs++cs'))
+      if (c ^. name) `notElem` concatMap (flip requiredBy reactions) (cs++cs')
       then (c ^. name):distilling cs (c:cs')
       else distilling cs (c:cs')
     distilling [] cs' = []
@@ -65,7 +65,7 @@ distill required reactions = mix $ chain (a ^.. each . produce) reactions ++ b
     b = required ^.. folded.filtered (\c -> c^.name `notElem` distilled)
 
 chain listOfRequired reactions =
-  let results = mix . concat $ listOfRequired & mapped %~ cause reactions in
+  let results = mix . concat $ listOfRequired <&> cause reactions in
     if listOfRequired == results then results else chain results reactions
 
 superChain [Chemical n "ORE"] reactions = n
