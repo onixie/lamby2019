@@ -75,8 +75,6 @@ superChain listOfRequired reactions =
 
 day14Part1 = superChain [Chemical 1 "FUEL"] <$> readReactions
 
-oneTrillion = 1000000000000
-
 day14Part2 n = do
   ore <- superChain [Chemical n "FUEL"] <$> readReactions
   print ore
