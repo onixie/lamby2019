@@ -5,9 +5,11 @@ import Conduit
 import Control.Monad
 import Control.Monad.State
 import Control.Lens hiding ((#))
-
+import Control.Concurrent (forkIO)
+import Control.Concurrent.STM
 import Data.Map (Map, empty, fromList, insert, lookup, size, toList)
 import Data.Maybe
+import Data.IORef
 import Day7 (feedback, readICPFromC)
 import Day9 (interpretC, run)
 import Day13 (toD)
@@ -15,6 +17,8 @@ import Prelude hiding (lookup, Empty, map)
 import Text.Printf
 import Diagrams.Prelude as DP hiding (size, Empty, Start, position)
 import Diagrams.Backend.SVG
+import qualified Graphics.Gloss as G
+import qualified Graphics.Gloss.Interface.IO.Game as GG
 --import Diagrams.Backend.Rasterific
 
 import System.IO
@@ -64,19 +68,50 @@ visualize d = renderSVG "./out/Day15-result.svg" (dims2D 500 500) (scene :: Diag
               <> listOf OxygenSystem `atPoints` repeat (circle 0.2 # fc blue)
               <> [p2 (toD (d ^. position))] `atPoints` repeat (circle 0.2 # fc red)
 
-day15C = do
-  liftIO $ hSetBuffering stdin NoBuffering
-  feedback Start $ control (Droid Nothing (0,0) empty Start True) 0 .| rcp
+draw d = G.Pictures $ concat
+  [(p G.translate (G.rectangleSolid 1 1)) <$> listOf Wall
+  ,(p G.translate (G.circle 0.2)) <$> listOf Origin
+  ,(p G.translate (G.circle 0.2)) <$> listOf OxygenSystem
+  ,(p G.translate (G.circle 0.2)) <$> [toD (d^.position)]]
   where
-    control droid n = do
+    listOf obj = fmap (toD . fst) . filter (( obj==).snd) $ toList (d ^. map)
+    bound m = (minimum m, maximum m)
+    p = flip . uncurry
+
+day15C = do
+  let initDroid = Droid Nothing (0,0) empty Start True
+  liftIO $ hSetBuffering stdin NoBuffering
+  world <- liftIO $ newIORef initDroid
+  cmd <- liftIO $ newTBQueueIO 1
+  rsp <- liftIO $ newTBQueueIO 1
+  liftIO . forkIO $ GG.playIO (G.InWindow "Day15" (50,50) (50,50)) G.white 1
+    initDroid (return . draw)
+    (\ e w -> case e of
+                (GG.EventKey key _ _ _) -> case key of
+                                             GG.Char k -> do
+                                               liftIO . atomically $ writeTBQueue cmd k
+                                               liftIO . atomically $ readTBQueue rsp
+                                               readIORef world
+                                             _ -> readIORef world
+                _ -> readIORef world
+    )
+    (\ t w -> readIORef world)
+
+  feedback Start $ control initDroid 0 world cmd rsp .| rcp
+  where
+    control droid n world cmd rsp = do
       d   <- sync droid
       let n' = if d ^. lastStatus == Blocked then n else n+1
       liftIO $ print n'
       d'  <- tryMove (Just North) d >>= tryMove (Just South) >>= tryMove (Just East) >>= tryMove (Just West)
-      d'' <- move (d & map .~ d' ^. map)
+      d'' <- move (d & map .~ d' ^. map) cmd
+
+      liftIO $ writeIORef world d
+      liftIO . atomically $ writeTBQueue rsp "Updated"
+
       if droid ^. lastStatus == Found
       then return ()
-      else control d'' n'
+      else control d'' n' world cmd rsp
 
     sync droid = do
       if isNothing (droid ^. movement) && (droid ^. lastStatus /= Start)
@@ -97,12 +132,13 @@ day15C = do
       Nothing    -> droid
     updateMap    obj droid     = droid & map %~ (insert (droid ^. position) obj)
     updateMapRaw obj droid pos = droid & map %~ (insert pos obj)
-    move droid = do
+    move droid cmd = do
       liftIO $ visualize droid
       if droid ^. lastStatus == Moved && not (isNothing (droid ^. movement)) && droid ^. fly
       then yield (droid ^?! movement.folded) >> return droid
       else do
-        c <- liftIO getChar
+        c <- liftIO . atomically $ readTBQueue cmd
+--        c <- liftIO getChar
         let (m,f) = case c of
                   'j' -> (Just West , False)
                   'k' -> (Just South, False)
