@@ -76,8 +76,13 @@ draw d = GV.applyViewPortToPicture vp . G.Pictures $ concat
   ,(p G.translate (G.color G.red    $ G.circle 0.2)) <$> [toD (d^.position)]]
   where
     listOf obj = fmap (toD . fst) . filter (( obj==).snd) $ toList (d ^. map)
-    vp = GV.viewPortInit { GV.viewPortScale = 20, GV.viewPortTranslate = toD (d ^. position) & both %~ negate }
+    vp = GV.viewPortInit { GV.viewPortScale = 800 / fromInteger (max mx my), GV.viewPortTranslate = toD (d ^. position) & both %~ negate }
     p = flip . uncurry
+    (mx, my) = case bound d of
+       (Just x1, Just y1, Just x2, Just y2) -> (x2 - x1, y2 - y1)
+       _ -> (1, 1)
+
+bound d = (minimumOf (folded._1._2) (toList (d ^. map)), minimumOf (folded._1._1) (toList (d ^. map)), maximumOf (folded._1._2) (toList (d ^. map)), maximumOf (folded._1._1) (toList (d ^. map)))
 
 makePrisms ''GG.Event
 makePrisms ''GG.Key
@@ -91,7 +96,7 @@ day15C = do
   wld <- liftIO $ newTBQueueIO 1
 
   -- UI
-  liftIO . forkIO $ GG.playIO (G.InWindow "Day15" (500,500) (500,500)) G.white 1
+  liftIO . forkIO $ GG.playIO (G.InWindow "Day15" (800,800) (200,200)) G.white 1
     initDroid (return . draw)
     (\ e w -> case e ^? _EventKey . _1 . _Char of
                 Just k -> do
@@ -105,10 +110,10 @@ day15C = do
    where
     control droid n cmd wld = do
       d   <- sync droid
-      liftIO . atomically $ writeTBQueue wld d
       let n' = if d ^. lastStatus == Blocked then n else n+1
       liftIO $ print n'
       d'  <- tryMove (Just North) d >>= tryMove (Just South) >>= tryMove (Just East) >>= tryMove (Just West)
+      liftIO . atomically $ writeTBQueue wld d'
       d'' <- move (d & map .~ d' ^. map) cmd
       if droid ^. lastStatus == Found
       then return ()
