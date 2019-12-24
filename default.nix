@@ -4,37 +4,22 @@ let
 
   inherit (nixpkgs) pkgs;
 
-  f = { mkDerivation, base, colour, conduit, containers, diagrams
-      , diagrams-lib, diagrams-rasterific, diagrams-svg, lens, mtl
-      , stdenv, stm, text
-      }:
-      mkDerivation {
-        pname = "lamby2019";
-        version = "0.1.0.0";
-        src = ./.;
-        isLibrary = true;
-        isExecutable = true;
-        libraryHaskellDepends = [
-          base colour conduit containers diagrams diagrams-lib
-          diagrams-rasterific diagrams-svg lens mtl stm text
-        ];
-        executableHaskellDepends = [
-          base colour conduit containers diagrams diagrams-lib
-          diagrams-rasterific diagrams-svg lens mtl stm text
-        ];
-        doHaddock = false;
-        homepage = "https://github.com/onixie";
-        license = stdenv.lib.licenses.bsd3;
-      };
-
   haskellPackages = if compiler == "default"
                        then pkgs.haskellPackages
                        else pkgs.haskell.packages.${compiler};
 
   variant = if doBenchmark then pkgs.haskell.lib.doBenchmark else pkgs.lib.id;
 
-  drv = variant (haskellPackages.callPackage f {});
+  drv = variant (haskellPackages.callPackage ./lamby2019.nix {});
 
 in
 
-  if pkgs.lib.inNixShell then drv.env else drv
+  with pkgs; lib.overrideDerivation (if lib.inNixShell then drv.env else drv) (old: {
+
+    buildInputs = old.buildInputs ++ [
+      mesa_drivers
+    ];
+
+    LIBGL_DRIVERS_PATH="${mesa_drivers}/lib/dri";
+    LD_LIBRARY_PATH="${mesa_drivers}/lib:\$LD_LIBRARY_PATH";
+  })
