@@ -19,6 +19,7 @@ import Diagrams.Prelude as DP hiding (size, Empty, Start, position)
 import Diagrams.Backend.SVG
 import qualified Graphics.Gloss as G
 import qualified Graphics.Gloss.Interface.IO.Game as GG
+import qualified Graphics.Gloss.Data.ViewPort as GV
 --import Diagrams.Backend.Rasterific
 
 import System.IO
@@ -68,50 +69,50 @@ visualize d = renderSVG "./out/Day15-result.svg" (dims2D 500 500) (scene :: Diag
               <> listOf OxygenSystem `atPoints` repeat (circle 0.2 # fc blue)
               <> [p2 (toD (d ^. position))] `atPoints` repeat (circle 0.2 # fc red)
 
-draw d = G.Pictures $ concat
-  [(p G.translate (G.rectangleSolid 1 1)) <$> listOf Wall
-  ,(p G.translate (G.circle 0.2)) <$> listOf Origin
-  ,(p G.translate (G.circle 0.2)) <$> listOf OxygenSystem
-  ,(p G.translate (G.circle 0.2)) <$> [toD (d^.position)]]
+draw d = GV.applyViewPortToPicture vp . G.Pictures $ concat
+  [(p G.translate (G.color G.orange $ G.rectangleSolid 1 1)) <$> listOf Wall
+  ,(p G.translate (G.color G.green  $ G.circle 0.2)) <$> listOf Origin
+  ,(p G.translate (G.color G.aquamarine $ G.circle 0.2)) <$> listOf OxygenSystem
+  ,(p G.translate (G.color G.red    $ G.circle 0.2)) <$> [toD (d^.position)]]
   where
     listOf obj = fmap (toD . fst) . filter (( obj==).snd) $ toList (d ^. map)
-    bound m = (minimum m, maximum m)
+    vp = GV.viewPortInit { GV.viewPortScale = 20, GV.viewPortTranslate = toD (d ^. position) & both %~ negate }
     p = flip . uncurry
 
-day15C = do
-  let initDroid = Droid Nothing (0,0) empty Start True
-  liftIO $ hSetBuffering stdin NoBuffering
-  world <- liftIO $ newIORef initDroid
-  cmd <- liftIO $ newTBQueueIO 1
-  rsp <- liftIO $ newTBQueueIO 1
-  liftIO . forkIO $ GG.playIO (G.InWindow "Day15" (50,50) (50,50)) G.white 1
-    initDroid (return . draw)
-    (\ e w -> case e of
-                (GG.EventKey key _ _ _) -> case key of
-                                             GG.Char k -> do
-                                               liftIO . atomically $ writeTBQueue cmd k
-                                               liftIO . atomically $ readTBQueue rsp
-                                               readIORef world
-                                             _ -> readIORef world
-                _ -> readIORef world
-    )
-    (\ t w -> readIORef world)
+makePrisms ''GG.Event
+makePrisms ''GG.Key
 
-  feedback Start $ control initDroid 0 world cmd rsp .| rcp
-  where
-    control droid n world cmd rsp = do
+day15C = do
+  liftIO $ hSetBuffering stdin NoBuffering
+
+  let initDroid = Droid Nothing (0,0) empty Start True
+
+  cmd <- liftIO $ newTBQueueIO 1
+  wld <- liftIO $ newTBQueueIO 1
+
+  -- UI
+  liftIO . forkIO $ GG.playIO (G.InWindow "Day15" (500,500) (500,500)) G.white 1
+    initDroid (return . draw)
+    (\ e w -> case e ^? _EventKey . _1 . _Char of
+                Just k -> do
+                             liftIO . atomically $ writeTBQueue cmd k
+                             liftIO . atomically $ readTBQueue  wld
+                _ -> return w
+    )
+    (\ t w -> return w)
+  -- logic
+  feedback Start $ control initDroid 0 cmd wld .| rcp
+   where
+    control droid n cmd wld = do
       d   <- sync droid
+      liftIO . atomically $ writeTBQueue wld d
       let n' = if d ^. lastStatus == Blocked then n else n+1
       liftIO $ print n'
       d'  <- tryMove (Just North) d >>= tryMove (Just South) >>= tryMove (Just East) >>= tryMove (Just West)
       d'' <- move (d & map .~ d' ^. map) cmd
-
-      liftIO $ writeIORef world d
-      liftIO . atomically $ writeTBQueue rsp "Updated"
-
       if droid ^. lastStatus == Found
       then return ()
-      else control d'' n' world cmd rsp
+      else control d'' n' cmd wld
 
     sync droid = do
       if isNothing (droid ^. movement) && (droid ^. lastStatus /= Start)

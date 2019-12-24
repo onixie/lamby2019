@@ -7,8 +7,8 @@ module Main where
 -- import Day5
 -- import Day6
 -- import Day7
-
-import Day13
+-- import Day13
+import Day15
 
 main :: IO ()
 main = do
@@ -33,5 +33,8 @@ main = do
   -- day7Part1 >>= print . maximum
 
   -- Day13
-  day13CPart2 >>= print
+  --day13CPart2 >>= print
+
+  -- Day15
+  day15Part1 >>= print
   return ()
