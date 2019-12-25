@@ -66,7 +66,7 @@ day5Part2 = runConduit $ yield 5 .| day5C .| lastC
 
 ---
 
-feedback :: (PrintfArg i, Show i, MonadIO m) => i -> ConduitT i i m r -> ConduitT () i m r
+feedback :: (Show i, MonadIO m) => i -> ConduitT i i m r -> ConduitT () i m r
 feedback init conduit = do
     out <- liftIO $ newTBQueueIO 10
     ret <- liftIO $ newIORef undefined
