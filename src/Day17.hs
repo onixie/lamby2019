@@ -96,7 +96,7 @@ buildPath robot@(pos, dir) map =
                   if s /= 0 then T R dir':F s newPos:buildPath (newPos, dir') map
                   else []
 
-day17Part2 = do
+day17Part2FullPath = do
   (map, _) <- run captureScaffoldView
   let [robot@(pos, dir)] = findRobot map
   let path = buildPath robot map
@@ -131,6 +131,22 @@ findMainR path =
   , ([]==) . removeMatched (pats!!k) . removeMatched (pats!!j) . removeMatched (pats!!i) $ path
   ]
 
+-- A,B,B,A,C,A,C,A,C,B
 -- R,6,R,6,R,8,L,10,L,4
 -- R,6,L,10,R,8
--- L,4,L,4,L,12
+-- L,4,L,12,R,6,L,10
+
+day7C' :: ConduitT Int Int (StateT Int IO) [Int]
+day7C' = do
+  ipc <- readICPFromC "data/Day17-input.txt"
+  interpretC (2:tail ipc)
+
+day7CPart2 = run $ prompt .| void day7C' .| lastC
+  where
+    prompt = do
+      input "A,B,B,A,C,A,C,A,C,B\n"
+      input "R,6,R,6,R,8,L,10,L,4\n"
+      input "R,6,L,10,R,8\n"
+      input "L,4,L,12,R,6,L,10\n"
+      input "n\n"
+    input s = forM_ (s ^.. traversed . from enum) yield
