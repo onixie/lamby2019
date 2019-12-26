@@ -108,6 +108,7 @@ test2 = void $ interpretC [1102,34915192,34915192,7,4,7,99,0]
 test3 :: ConduitT Integer Integer (StateT Integer IO) ()
 test3 = void $ interpretC [104,1125899906842624,99]
 
+run :: Integral i => ConduitT () Void (StateT i IO) r -> IO (r, i)
 run = flip runStateT 0 . runConduit
 
 day9Part1 = run $ yield 1 .| day9C .| sinkList
