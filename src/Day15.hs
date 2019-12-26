@@ -125,7 +125,7 @@ move key report droid = do
   then yield (droid ^?! movement.folded) >> return droid
   else do
     (k, s) <- liftIO . atomically $ readTBQueue key -- k <- liftIO getChar
-    when (k == 'f') $ fillOxygen droid report >>= liftIO . print
+    when (k == 'f') $ fillOxygen droid report >>= liftIO . printf "total %d mins\n"
 
     let (m, f) = keyToMove $ if s == GG.Down then toUpper k else k
     when (m /= Just Stay) $ yield (m ^?! folded)
@@ -209,14 +209,15 @@ draw d = GV.applyViewPortToPicture vp . G.Pictures $ concat
        _ -> (1, 1)
 
 listOf obj droid = fmap fst . filter ((obj==).snd) $ toList (droid ^. map)
-bound d = (minimumOf (folded._1._2) (toList (d ^. map)), minimumOf (folded._1._1) (toList (d ^. map)), maximumOf (folded._1._2) (toList (d ^. map)), maximumOf (folded._1._1) (toList (d ^. map)))
-
-day15Part1 = run $ day15C .| awaitForever return
+bound d = let lom = toList (d ^. map)
+              _x  = folded._1._2
+              _y  = folded._1._1 in
+  (minimumOf _x lom, minimumOf _y lom, maximumOf _x lom, maximumOf _y lom)
 
 fillOxygen droid report = do
     fillMore (0::Int) droid $ listOf OxygenSystem droid
   where
-    fillMore n d [] = return n
+    fillMore n d [] = return $ max 0 (n-1)
     fillMore n d os = do
       liftIO $ printf "%d mins\n" n
       let newOS = fmap head . group . sort .
@@ -227,4 +228,6 @@ fillOxygen droid report = do
       liftIO . atomically $ writeTBQueue report newD
       liftIO $ threadDelay 5000
       fillMore (n+1) newD newOS
-    tryFill (x,y) = [(x-1,y), (x+1,y), (x,y-1), (x,y+1)]
+    tryFill (x, y) = [(x-1, y), (x+1, y), (x, y-1), (x, y+1)]
+
+day15 = run $ day15C .| awaitForever return

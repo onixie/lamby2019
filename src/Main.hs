@@ -36,5 +36,5 @@ main = do
   --day13CPart2 >>= print
 
   -- Day15
-  day15Part1 >>= print
+  day15 >>= print
   return ()
