@@ -1,6 +1,6 @@
 { mkDerivation, base, colour, conduit, containers, diagrams
-, diagrams-lib, diagrams-rasterific, diagrams-svg, gloss, lens, mtl
-, random, repa, stdenv, stm, text
+, diagrams-lib, diagrams-rasterific, diagrams-svg, gloss, lens
+, monad-parallel, mtl, random, repa, stdenv, stm, text
 }:
 mkDerivation {
   pname = "lamby2019";
@@ -10,13 +10,13 @@ mkDerivation {
   isExecutable = true;
   libraryHaskellDepends = [
     base colour conduit containers diagrams diagrams-lib
-    diagrams-rasterific diagrams-svg gloss lens mtl random repa stm
-    text
+    diagrams-rasterific diagrams-svg gloss lens monad-parallel mtl
+    random repa stm text
   ];
   executableHaskellDepends = [
     base colour conduit containers diagrams diagrams-lib
-    diagrams-rasterific diagrams-svg gloss lens mtl random repa stm
-    text
+    diagrams-rasterific diagrams-svg gloss lens monad-parallel mtl
+    random repa stm text
   ];
   doHaddock = false;
   homepage = "https://github.com/onixie";

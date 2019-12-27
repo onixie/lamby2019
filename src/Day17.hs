@@ -10,8 +10,8 @@ import Data.Array.Repa
 import Data.List (group, sort, minimumBy, maximumBy)
 import Data.Function (on)
 
-day7C :: ConduitT Int Int (StateT Int IO) [Int]
-day7C = readICPFromC "data/Day17-input.txt" >>= interpretC
+day17C :: ConduitT Int Int (StateT Int IO) [Int]
+day17C = readICPFromC "data/Day17-input.txt" >>= interpretC
 
 viewScaffold :: ConduitT Int Int (StateT Int IO) ()
 viewScaffold = awaitForever $ \v -> do
@@ -20,7 +20,7 @@ viewScaffold = awaitForever $ \v -> do
 
 captureScaffoldView :: ConduitT i Void (StateT Int IO) (Array U DIM2 Int)
 captureScaffoldView = do
-  sv <- yield 0 .| void day7C .| viewScaffold .| sinkList
+  sv <- yield 0 .| void day17C .| viewScaffold .| sinkList
   let (row, col) = getDim sv
   return $ fromListUnboxed (Z :. row :. col :: DIM2) (sv ^.. traversed.filtered (/=10))
   where
@@ -48,10 +48,10 @@ toDir 118 = S
 toDir 62  = E
 toDir 60  = W
 
-toStepper N = (id, (subtract 1))
+toStepper N = (id, subtract 1)
 toStepper S = (id, (+1))
 toStepper E = ((+1), id)
-toStepper W = ((subtract 1), id)
+toStepper W = (subtract 1, id)
 
 data Turn = L | R deriving (Show, Ord, Eq)
 turn L N = W
@@ -73,7 +73,7 @@ findRobot map = let Z :. r :. c = extent map in
   [((x, y), toDir c) | x <- [0..c-1]
                      , y <- [0..r-1]
                      , let c = map ! (Z :. y :. x)
-                     , any (c==) [94, 62, 60, 118]
+                     , c `elem` [94, 62, 60, 118]
   ]
 
 steps pos stepper map = steps' pos stepper map 0
@@ -136,12 +136,12 @@ findMainR path =
 -- R,6,L,10,R,8
 -- L,4,L,12,R,6,L,10
 
-day7C' :: ConduitT Int Int (StateT Int IO) [Int]
-day7C' = do
+day17C' :: ConduitT Int Int (StateT Int IO) [Int]
+day17C' = do
   ipc <- readICPFromC "data/Day17-input.txt"
   interpretC (2:tail ipc)
 
-day7CPart2 = run $ prompt .| void day7C' .| lastC
+day17Part2 = run $ prompt .| void day17C' .| lastC
   where
     prompt = do
       input "A,B,B,A,C,A,C,A,C,B\n"

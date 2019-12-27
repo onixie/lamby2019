@@ -8,7 +8,9 @@ module Main where
 -- import Day6
 -- import Day7
 -- import Day13
-import Day15
+-- import Day15
+
+import Day19
 
 main :: IO ()
 main = do
@@ -36,5 +38,8 @@ main = do
   --day13CPart2 >>= print
 
   -- Day15
-  day15 >>= print
+  -- day15 >>= print
+
+  -- Day19
+  day19Part1 50 >>= print . sum
   return ()
