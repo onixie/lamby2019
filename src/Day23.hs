@@ -11,9 +11,11 @@ import qualified Control.Concurrent.STM as STM
 import Data.Maybe
 
 computer :: [Int] -> Int -> STM.TBQueue Int -> ConduitT Int Int (StateT Int IO) [Int]
-computer (!ipc) addr nic = (yield addr >> runAt nic) .| interpretC ipc
+computer (!ipc) addr nic = (setup addr >> listenOn nic) .| interpretC ipc
   where
-    runAt :: STM.TBQueue Int -> ConduitT Int Int (StateT Int IO) ()
-    runAt nic = do
+    setup addr = yield addr
+    listenOn :: STM.TBQueue Int -> ConduitT Int Int (StateT Int IO) ()
+    listenOn nic = do
       p <- liftIO . STM.atomically $ STM.tryReadTBQueue nic
       yield (fromMaybe (negate 1) p)
+      listenOn nic
