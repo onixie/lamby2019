@@ -41,5 +41,6 @@ main = do
   -- day15 >>= print
 
   -- Day19
-  day19Part1 50 >>= print . sum
+  --day19Part2 [1032, 1132] >>= return . rectangle
+  day19Part2
   return ()
